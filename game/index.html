@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sunset Sortie — Coral Run</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #2a1a2e; font-family: "Segoe UI", system-ui, sans-serif; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .hud { position: fixed; z-index: 5; color: #fff7ea; text-shadow: 0 1px 3px rgba(42,26,46,.85); pointer-events: none; }
+  .panel { background: rgba(38,28,64,.62); border: 1px solid rgba(255,207,158,.45); border-radius: 10px; padding: 8px 12px; }
+  #hud-flight { left: 14px; bottom: 14px; min-width: 196px; }
+  #hud-flight .big { font-size: 44px; font-weight: 800; line-height: 1; color: #ffd98a; }
+  #hud-flight .unit { font-size: 15px; font-weight: 700; color: #ffb36b; }
+  #hud-flight .row { display: flex; justify-content: space-between; gap: 18px; font-size: 15px; font-weight: 600; margin-top: 3px; }
+  #hud-mission { left: 14px; top: 14px; width: 252px; }
+  #hud-mission .stage { font-size: 12px; letter-spacing: 2px; color: #7fe7d2; font-weight: 800; }
+  #hud-mission .goal { font-size: 19px; font-weight: 800; margin: 2px 0; }
+  #hud-mission .dist { font-size: 15px; color: #ffd98a; font-weight: 700; }
+  #hud-mission .steps { font-size: 12.5px; color: #e8ddff; margin-top: 5px; line-height: 1.5; }
+  #hud-mission .steps b { color: #7fe7d2; }
+  #hud-right { right: 14px; top: 14px; width: 208px; }
+  #hud-right .row { display: flex; justify-content: space-between; font-size: 14.5px; font-weight: 700; margin: 2px 0; }
+  #fuelbar { height: 12px; border-radius: 6px; background: rgba(255,255,255,.18); overflow: hidden; margin: 4px 0 6px; }
+  #fuelFill { height: 100%; width: 82%; background: linear-gradient(90deg, #ff9d5c, #ffd98a); }
+  #compass { right: 14px; bottom: 14px; text-align: center; min-width: 150px; }
+  #compass .hdg { font-size: 30px; font-weight: 800; color: #ffd98a; line-height: 1.05; }
+  #compass .tape { font-size: 13px; letter-spacing: 3px; color: #e8ddff; }
+  #minimap { position: fixed; right: 14px; bottom: 118px; z-index: 5; border-radius: 10px; border: 1px solid rgba(255,207,158,.45); background: rgba(38,44,81,.72); pointer-events: none; }
+  #ticker { left: 50%; transform: translateX(-50%); bottom: 14px; font-size: 13.5px; font-weight: 600; color: #ffe9c9; background: rgba(38,28,64,.55); padding: 5px 14px; border-radius: 999px; white-space: nowrap; }
+  #banner { left: 50%; top: 16%; transform: translateX(-50%); font-size: 30px; font-weight: 800; color: #ffd98a; text-align: center; opacity: 0; transition: opacity .25s; }
+  #crosshair { left: 50%; top: 50%; transform: translate(-50%,-50%); font-size: 26px; color: rgba(255,247,234,.75); }
+  #title { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 5.5%; pointer-events: none; text-align: center; }
+  #title .kicker { background: #0f766e; color: #eafffa; font-weight: 800; letter-spacing: 4px; font-size: 15px; padding: 6px 20px; border-radius: 4px; box-shadow: 0 3px 0 rgba(0,0,0,.35); }
+  #title h1 { margin: 10px 0 2px; font-size: 104px; line-height: .94; font-weight: 900; letter-spacing: 1px; background: linear-gradient(180deg, #ffe259 8%, #ffa751 45%, #ff5e8a 88%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(3px 4px 0 rgba(42,26,46,.9)) drop-shadow(0 0 22px rgba(255,150,80,.35)); }
+  #title .sub { font-size: 23px; font-weight: 700; color: #fff7ea; text-shadow: 0 2px 6px rgba(42,26,46,.9); }
+  #title .card { margin-top: 18px; background: rgba(38,28,64,.68); border: 1px solid rgba(255,207,158,.5); border-radius: 12px; padding: 12px 22px; color: #ffe9c9; font-size: 16.5px; line-height: 1.55; max-width: 620px; }
+  #title .card b { color: #7fe7d2; }
+  #title .prompt { margin-top: 16px; font-size: 21px; font-weight: 800; color: #ffd98a; text-shadow: 0 2px 6px rgba(42,26,46,.95); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  #end { position: fixed; inset: 0; z-index: 10; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; pointer-events: none; }
+  #end h2 { font-size: 64px; margin: 0 0 6px; font-weight: 900; color: #ffd98a; text-shadow: 3px 4px 0 rgba(42,26,46,.9); }
+  #end .lines { background: rgba(38,28,64,.72); border: 1px solid rgba(255,207,158,.5); border-radius: 12px; padding: 14px 28px; color: #fff7ea; font-size: 19px; line-height: 1.6; }
+  #end .prompt { margin-top: 14px; font-size: 20px; font-weight: 800; color: #7fe7d2; text-shadow: 0 2px 6px rgba(42,26,46,.95); }
+  .hidden { display: none !important; }
+  body.poster .hud, body.poster #minimap { display: none !important; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="scene" aria-label="Sunset Sortie: fly the seaplane through the golden gates, collect the cargo and land on Coral Run before dark"></canvas>
+<p id="status" role="status" aria-live="polite"></p>
+
+<div id="hud-flight" class="hud panel">
+  <div><span class="big" id="speed">118</span> <span class="unit">KT AIRSPEED</span></div>
+  <div class="row"><span>ALT <b id="alt">412</b> FT</span><span>VS <b id="vs">+0</b></span></div>
+  <div class="row"><span>THR <b id="thr">72</b>%</span><span>HULL <b id="hull">100</b>%</span></div>
+</div>
+
+<div id="hud-mission" class="hud panel">
+  <div class="stage" id="m-stage">STAGE 1 OF 3 · GOLDEN GATES</div>
+  <div class="goal" id="m-goal">Fly the gold ring</div>
+  <div class="dist" id="m-dist">GATE 3 / 12 · 640 m</div>
+  <div class="steps" id="m-steps">▸ <b>Gates 1–6</b> — thread the rings<br>▸ Cargo — lift 3 crates at Palm Cay<br>▸ Final — land on Coral Run strip</div>
+</div>
+
+<div id="hud-right" class="hud panel">
+  <div class="row"><span>☀ SUNSET</span><span id="clock">18:42</span></div>
+  <div class="row"><span>TIME LEFT</span><span id="timeleft">3:58</span></div>
+  <div class="row"><span>FUEL</span><span id="fuelpct">82%</span></div>
+  <div id="fuelbar"><div id="fuelFill"></div></div>
+  <div class="row"><span>SCORE</span><span id="score">1,250</span></div>
+  <div class="row"><span>BEST</span><span id="best">0</span></div>
+</div>
+
+<canvas id="minimap" width="168" height="128"></canvas>
+
+<div id="compass" class="hud panel">
+  <div class="hdg" id="hdg">NW 318°</div>
+  <div class="tape" id="tape">W · NW · N · NE · E</div>
+</div>
+
+<div id="ticker" class="hud">📻 Radio Coral 98.6 — “Balloons over Palm Cay — keep right of the lighthouse…”</div>
+<div id="banner" class="hud"></div>
+<div id="crosshair" class="hud">+</div>
+
+<div id="title">
+  <div class="kicker">CORAL RUN AIRMAIL · ONE SUNSET, ONE SORTIE</div>
+  <h1>SUNSET<br>SORTIE</h1>
+  <div class="sub">Thread 12 golden gates · lift the Palm Cay cargo · land before dark</div>
+  <div class="card">🛩 <b>← →</b> bank &amp; turn &nbsp; <b>↑ ↓</b> climb &amp; dive &nbsp; <b>W / S</b> throttle<br>
+  Slow over the strip, wheels over the numbers — a fast arrival is a crash, not a landing.</div>
+  <div class="prompt">PRESS ENTER — ENGINE START</div>
+</div>
+
+<div id="end">
+  <h2 id="end-title">TOUCHDOWN!</h2>
+  <div class="lines" id="end-lines"></div>
+  <div class="prompt">PRESS ENTER — FLY THE NEXT SUNSET</div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
