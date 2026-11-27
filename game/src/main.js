@@ -111,17 +111,44 @@ function endSortie(kind) {
 /** Chase camera: glide toward a point behind and above the plane. */
 const desired = new THREE.Vector3();
 const lookTarget = new THREE.Vector3();
-function chaseCamera(dt, lift = 0, back = 27) {
+function chaseCamera(dt, lift = 0, back = 27, side = 0) {
   const f = flightApi.forward();
   desired.set(flight.x - f.x * back, flight.y + 9.5, flight.z - f.z * back);
   const k = 1 - Math.exp(-dt * 3.4);
   camPos.lerp(desired, k);
   camera.position.copy(camPos);
-  lookTarget.set(flight.x + f.x * 34, flight.y + 1.5 + lift, flight.z + f.z * 34);
+  // side > 0 aims the camera right of the plane, pushing the plane to
+  // the left of frame — the title shot uses it to clear the poster card.
+  lookTarget.set(
+    flight.x + f.x * 34 - f.z * side,
+    flight.y + 1.5 + lift,
+    flight.z + f.z * 34 + f.x * side,
+  );
   camera.lookAt(lookTarget);
   camera.rotateZ(-flight.bank * 0.32);
   const targetFov = 58 + (flight.speed / 68) * 13;
   camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 2.4);
+  camera.updateProjectionMatrix();
+}
+
+/**
+ * Hero camera (title shot only): a poster framing — the jet large in
+ * the left third, banked, with the squall ahead of it. The chase camera
+ * always centres the plane, which put it behind the title card; aiming
+ * right of the jet is what actually moves it in frame.
+ */
+function heroCamera() {
+  const f = flightApi.forward();
+  camera.position.set(flight.x - f.x * 30, flight.y + 3, flight.z - f.z * 30);
+  lookTarget.set(
+    flight.x + f.x * 24 - f.z * 24,
+    flight.y - 6,
+    flight.z + f.z * 24 + f.x * 24,
+  );
+  camera.up.set(0, 1, 0);
+  camera.lookAt(lookTarget);
+  camera.rotateZ(-flight.bank * 0.3);
+  camera.fov = 55;
   camera.updateProjectionMatrix();
 }
 
@@ -220,7 +247,8 @@ function frame(now, input, shotMode) {
   if (shotMode) rescue.step(flight, 0, elapsed);
   posePlane(planeParts, flight);
   if (shotMode && shotCamera === 'cockpit') cockpitCamera();
-  else if (shotMode && shot === 'title') chaseCamera(1, 8, 36);
+  else if (shotMode && shotCamera === 'hero') heroCamera();
+  else if (shotMode && shot === 'title') chaseCamera(1, 9, 32, 15);
   else if (screen === 'title' && !shotMode) orbitCamera(elapsed + 4.2);
   else if (!shotMode && viewMode === 'cockpit' && screen === 'play') cockpitCamera();
   else chaseCamera(dt);

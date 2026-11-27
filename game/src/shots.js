@@ -44,10 +44,12 @@ export function stageShot(name, flightApi, rescue) {
     flight.vy = -3.2; flight.fuel = 29;
     return { screen: 'play', camera: 'chase', timeLeft: 41, score: 1200 };
   }
-  // title: big in the lower frame under the poster type, storm wall and
-  // warm gap ahead, the first flare a red point on the horizon.
-  flight.x = -58; flight.y = 66; flight.z = 215;
-  flight.heading = 0.34; flight.bank = 0.3; flight.speed = 40; flight.throttle = 0.58;
+  // title: the jet sits clear of the poster card, low-left in a banked
+  // turn — the whole delta silhouette reads, storm wall and warm gap
+  // ahead, the first flare a red point on the horizon. (Round-3 fix:
+  // the old staging hid the jet behind the info card.)
+  flight.x = -150; flight.y = 62; flight.z = 60;
+  flight.heading = 0.5; flight.bank = 0.36; flight.speed = 40; flight.throttle = 0.58;
   flight.fuel = 96;
-  return { screen: 'title', camera: 'orbit', timeLeft: 205, score: 0 };
+  return { screen: 'title', camera: 'hero', timeLeft: 205, score: 0 };
 }
