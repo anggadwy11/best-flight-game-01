@@ -123,6 +123,40 @@ function chaseCamera(dt, lift = 0, back = 27) {
   camera.updateProjectionMatrix();
 }
 
+/**
+ * Cockpit camera: the pilot's eye. Sits at the nose, looks along the
+ * flight path, and rolls with the bank — the canopy, dash and reticle
+ * are DOM (hud.setCockpit), the world does the rest.
+ */
+let viewMode = 'chase';
+const upVec = new THREE.Vector3();
+function cockpitCamera() {
+  const f = flightApi.forward();
+  camera.position.set(flight.x + f.x * 1.4, flight.y + 1.8, flight.z + f.z * 1.4);
+  lookTarget.set(
+    flight.x + f.x * 60,
+    flight.y + 1.8 + Math.sin(flight.pitch) * 42,
+    flight.z + f.z * 60,
+  );
+  upVec.set(-f.z, 0, f.x).multiplyScalar(Math.sin(-flight.bank));
+  upVec.y = Math.cos(flight.bank);
+  camera.up.copy(upVec.normalize());
+  camera.lookAt(lookTarget);
+  camera.fov += (60 - camera.fov) * 0.4;
+  camera.updateProjectionMatrix();
+}
+function setView(mode) {
+  viewMode = mode;
+  hud.setCockpit(mode === 'cockpit');
+  planeParts.group.visible = mode !== 'cockpit';
+}
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyC' && screen === 'play' && !shot) {
+    setView(viewMode === 'cockpit' ? 'chase' : 'cockpit');
+    announce(viewMode === 'cockpit' ? 'Cockpit view.' : 'Chase view.');
+  }
+});
+
 /** Title camera: a slow orbit with a creeping push-in — never a dead hold. */
 function orbitCamera(t) {
   const r = 58 - Math.sin(t * 0.11) * 6 - t * 0.2;
@@ -183,8 +217,10 @@ function frame(now, input, shotMode) {
   storm.update(dt, elapsed, camera.position, inten);
   if (shotMode) rescue.step(flight, 0, elapsed);
   posePlane(planeParts, flight);
-  if (shotMode && shot === 'title') chaseCamera(1, 8, 36);
+  if (shotMode && shotCamera === 'cockpit') cockpitCamera();
+  else if (shotMode && shot === 'title') chaseCamera(1, 8, 36);
   else if (screen === 'title' && !shotMode) orbitCamera(elapsed + 4.2);
+  else if (!shotMode && viewMode === 'cockpit' && screen === 'play') cockpitCamera();
   else chaseCamera(dt);
   hud.update(flight, rescue, shotMode ? shotTimeLeft : timeLeft, SORTIE_SECONDS, shotMode ? shotScore : score, elapsed);
   renderer.render(scene, camera);
@@ -193,11 +229,14 @@ function frame(now, input, shotMode) {
 
 let shotTimeLeft = SORTIE_SECONDS;
 let shotScore = 0;
+let shotCamera = 'chase';
 
 if (shot) {
   const staged = stageShot(shot, flightApi, rescue);
   shotTimeLeft = staged.timeLeft;
   shotScore = staged.score;
+  shotCamera = staged.camera || 'chase';
+  if (shotCamera === 'cockpit') setView('cockpit');
   if (staged.screen === 'title') {
     screen = 'title';
     elapsed = 4.2;

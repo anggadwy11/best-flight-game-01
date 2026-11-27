@@ -48,6 +48,84 @@ export function createHud(best) {
   const fuelFill = el('fuelFill');
   const bannerNode = el('banner');
   const map = el('minimap').getContext('2d');
+  // Cockpit instruments (view toggled by main.js): three live screens.
+  const cockpitNode = el('cockpit');
+  const radarCtx = el('radar').getContext('2d');
+  const adiCtx = el('adi').getContext('2d');
+  const engCtx = el('eng').getContext('2d');
+  const setHdgTape = cached(el('hdgtape-val'), (v) => v);
+  let cockpitOn = false;
+
+  function drawRadar(flight, target) {
+    const c = radarCtx; const W = 252; const H = 140;
+    const cx = W / 2; const cy = H / 2; const S = 0.105; // 600 m -> ~63 px
+    c.fillStyle = '#06121a'; c.fillRect(0, 0, W, H);
+    c.strokeStyle = 'rgba(47,212,182,0.4)'; c.lineWidth = 1;
+    for (const r of [22, 44, 66]) { c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke(); }
+    c.beginPath(); c.moveTo(cx - 70, cy); c.lineTo(cx + 70, cy); c.moveTo(cx, cy - 70); c.lineTo(cx, cy + 70); c.stroke();
+    const fx = Math.sin(flight.heading); const fz = -Math.cos(flight.heading);
+    const plot = (x, z) => {
+      const dx = x - flight.x; const dz = z - flight.z;
+      return [cx + (dx * -fz + dz * fx) * S, cy - (dx * fx + dz * fz) * S];
+    };
+    c.fillStyle = 'rgba(120,170,140,0.8)';
+    for (const island of ISLANDS) { const [px, py] = plot(island.x, island.z); c.fillRect(px - 2, py - 2, 4, 4); }
+    for (let i = 0; i < BOATS.length; i += 1) {
+      const [px, py] = plot(BOATS[i].x, BOATS[i].z);
+      c.fillStyle = i === (target && target.boatIndex) ? '#ffb042' : '#ff2a1e';
+      c.fillRect(px - 3, py - 3, 6, 6);
+    }
+    const [rx, ry] = plot(RUNWAY.x, RUNWAY.z);
+    c.fillStyle = '#fff7ea'; c.fillRect(rx - 5, ry - 1.5, 10, 3);
+    // Own ship: fixed centre wedge pointing up (heading-up display).
+    c.fillStyle = '#7fe7d2';
+    c.beginPath(); c.moveTo(cx, cy - 6); c.lineTo(cx + 4.5, cy + 5); c.lineTo(cx - 4.5, cy + 5); c.closePath(); c.fill();
+  }
+
+  function drawAdi(flight) {
+    const c = adiCtx; const W = 252; const H = 140;
+    c.fillStyle = '#06121a'; c.fillRect(0, 0, W, H);
+    c.save();
+    c.beginPath(); c.rect(4, 4, W - 8, H - 8); c.clip();
+    c.translate(W / 2, H / 2);
+    c.rotate(-flight.bank);
+    c.translate(0, flight.pitch * 120);
+    c.fillStyle = '#2e6f8e'; c.fillRect(-W, -H * 2, W * 2, H * 2);
+    c.fillStyle = '#26332a'; c.fillRect(-W, 0, W * 2, H * 2);
+    c.fillStyle = '#fff7ea'; c.fillRect(-W, -1.2, W * 2, 2.4);
+    c.fillStyle = 'rgba(255,247,234,0.75)';
+    for (const d of [-20, -10, 10, 20]) {
+      const y = -d * 2.4; const w = d % 20 === 0 ? 34 : 20;
+      c.fillRect(-w / 2, y - 1, w, 2);
+    }
+    c.restore();
+    // Fixed aircraft symbol.
+    c.strokeStyle = '#ffb042'; c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(W / 2 - 44, H / 2); c.lineTo(W / 2 - 12, H / 2); c.lineTo(W / 2 - 12, H / 2 + 7);
+    c.moveTo(W / 2 + 44, H / 2); c.lineTo(W / 2 + 12, H / 2); c.lineTo(W / 2 + 12, H / 2 + 7);
+    c.stroke();
+    c.fillStyle = '#ffb042'; c.beginPath(); c.arc(W / 2, H / 2, 3, 0, Math.PI * 2); c.fill();
+  }
+
+  function drawEng(flight, stormPct) {
+    const c = engCtx; const W = 252; const H = 140;
+    c.fillStyle = '#06121a'; c.fillRect(0, 0, W, H);
+    const rows = [
+      ['THR', flight.throttle * 100, '#7fe7d2'],
+      ['FUEL', flight.fuel, flight.fuel < 22 ? '#ff5e5e' : '#58b7ff'],
+      ['HULL', flight.hull, flight.hull < 40 ? '#ff5e5e' : '#7ddc7d'],
+      ['STORM', stormPct, '#c9a7ff'],
+    ];
+    c.font = '700 12px system-ui, sans-serif';
+    rows.forEach(([label, value, color], i) => {
+      const y = 14 + i * 32;
+      c.fillStyle = '#9fd8cb'; c.fillText(label, 8, y + 4);
+      c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(52, y - 6, 150, 11);
+      c.fillStyle = color; c.fillRect(52, y - 6, 150 * Math.max(0, Math.min(100, value)) / 100, 11);
+      c.fillStyle = '#fff7ea'; c.fillText(`${Math.round(value)}%`, 210, y + 4);
+    });
+  }
   let lastFuelWidth = -1;
   let lastBanner = null;
 
@@ -136,6 +214,18 @@ export function createHud(best) {
         bannerNode.style.opacity = '0';
       }
       drawMap(flight, target);
+      if (cockpitOn) {
+        const tgt = mission.state.finished ? null : { boatIndex: mission.state.boatIndex };
+        drawRadar(flight, tgt);
+        drawAdi(flight);
+        drawEng(flight, stormPct);
+        setHdgTape(`HDG ${point} ${String(Math.round(deg)).padStart(3, '0')}°`);
+      }
+    },
+    setCockpit(on) {
+      cockpitOn = on;
+      cockpitNode.hidden = !on;
+      document.body.classList.toggle('cockpit', on);
     },
     showBanner(text) {
       bannerNode.textContent = text;

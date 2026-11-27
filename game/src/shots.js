@@ -2,8 +2,8 @@
 // The storyboard has no calm frame: every shot is inside the squall.
 // (1) title — the plane silhouetted against the storm wall and the warm
 // gap, searchlight sweeping, a red flare burning far ahead;
-// (2) boat — a listing fishing boat, crew on deck, flare smoke, and a
-// lightning strike frozen behind it (main.js fires the strike);
+// (2) boat — the cockpit frame: first mayday in the reticle, live dash
+// instruments below, storm wall and warm gap beyond the canopy;
 // (3) hover — low over the last boat, spray bursting, winch half done;
 // (4) landing — the wet strip in the rain, PAPI lit, storm at its peak.
 // Each scene places the real plane and rescue state at a staged moment
@@ -15,12 +15,16 @@ export function stageShot(name, flightApi, rescue) {
   rescue.reset();
 
   if (name === 'boat') {
-    rescue.state.boatIndex = 1;
-    rescue.state.rescued = 1;
-    flight.x = -110; flight.y = 27; flight.z = -804;
-    flight.heading = -0.3; flight.bank = -0.22; flight.speed = 39; flight.throttle = 0.55;
-    flight.fuel = 71;
-    return { screen: 'play', camera: 'chase', timeLeft: 148, score: 400 };
+    // The cockpit frame: first mayday dead ahead in the reticle, the
+    // amber ring and flare over FV Kestrel, storm wall behind it, and
+    // every dash screen reading the real flight state.
+    rescue.state.boatIndex = 0;
+    rescue.state.rescued = 0;
+    flight.x = 30; flight.y = 30; flight.z = -292;
+    flight.heading = 0.22; flight.bank = -0.16; flight.speed = 39; flight.throttle = 0.55;
+    flight.vy = -3.4; flight.pitch = -0.09;
+    flight.fuel = 84;
+    return { screen: 'play', camera: 'cockpit', timeLeft: 176, score: 0 };
   }
   if (name === 'hover') {
     rescue.state.boatIndex = 2;
