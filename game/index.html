@@ -27,8 +27,8 @@
   #compass { right: 14px; bottom: 14px; text-align: center; min-width: 150px; }
   #compass .hdg { font-size: 30px; font-weight: 800; color: #ffd98a; line-height: 1.05; }
   #compass .tape { font-size: 13px; letter-spacing: 3px; color: #e8ddff; }
-  #minimap { position: fixed; right: 14px; bottom: 118px; z-index: 5; border-radius: 10px; border: 1px solid rgba(255,207,158,.45); background: rgba(38,44,81,.72); pointer-events: none; }
-  #ticker { left: 50%; transform: translateX(-50%); bottom: 152px; font-size: 13.5px; font-weight: 600; color: #ffe9c9; background: rgba(38,28,64,.55); padding: 5px 14px; border-radius: 999px; white-space: nowrap; }
+  #minimap { position: fixed; right: 14px; bottom: 150px; z-index: 5; border-radius: 10px; border: 1px solid rgba(255,207,158,.45); background: rgba(38,44,81,.72); pointer-events: none; }
+  #ticker { left: 50%; transform: translateX(-50%); bottom: 158px; font-size: 13.5px; font-weight: 600; color: #ffe9c9; background: rgba(38,28,64,.55); padding: 5px 14px; border-radius: 999px; white-space: nowrap; }
   #banner { left: 50%; top: 16%; transform: translateX(-50%); font-size: 30px; font-weight: 800; color: #ffd98a; text-align: center; opacity: 0; transition: opacity .25s; }
   #crosshair { left: 50%; top: 50%; transform: translate(-50%,-50%); font-size: 26px; color: rgba(255,247,234,.75); }
   #title { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 5.5%; pointer-events: none; text-align: center; }
@@ -58,7 +58,29 @@
   #dash .screen { flex: 1; background: #07131a; border: 1px solid rgba(127,231,210,.22); border-radius: 8px; padding: 5px 7px 7px; }
   #dash .slabel { color: #2fd4b6; font-size: 10.5px; font-weight: 800; letter-spacing: 2px; margin-bottom: 3px; }
   #dash canvas { width: 100%; height: auto; display: block; }
-  body.cockpit #hud-flight, body.cockpit #compass, body.cockpit #minimap, body.cockpit #ticker, body.cockpit #crosshair { display: none !important; }
+  body.cockpit #minimap, body.cockpit #ticker, body.cockpit #crosshair { display: none !important; }
+
+  /* Instrument strip (chase view): round gauges + big readouts along the
+     bottom, Aeronaut-style, over a control footer that lists only the
+     keys the game really listens to. */
+  #strip { position: fixed; left: 0; right: 0; bottom: 27px; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 8px 18px; background: linear-gradient(180deg, rgba(10,15,22,.88), rgba(6,9,13,.94)); border-top: 1px solid rgba(255,207,158,.4); pointer-events: none; }
+  #strip .cell { display: flex; flex-direction: column; align-items: center; min-width: 86px; }
+  #strip .cell.read { align-items: flex-start; min-width: 128px; }
+  #strip .lab { font-size: 10.5px; font-weight: 800; letter-spacing: 2.5px; color: #7fe7d2; }
+  #strip .big { font-size: 46px; font-weight: 900; color: #fff7ea; line-height: 1; }
+  #strip .big .unit { font-size: 15px; color: #ffd98a; margin-left: 5px; letter-spacing: 1px; }
+  #strip .bignum { font-size: 36px; font-weight: 900; color: #fff7ea; line-height: 1.05; }
+  #strip .sub { font-size: 11.5px; color: #cfd8e6; font-weight: 600; letter-spacing: .5px; }
+  #strip .sub b { color: #ffd98a; }
+  #strip canvas { width: 74px; height: 74px; }
+  #strip .bar { width: 128px; height: 10px; border-radius: 5px; background: rgba(255,255,255,.16); overflow: hidden; margin: 5px 0 3px; }
+  #thrFill { height: 100%; width: 62%; background: linear-gradient(90deg, #2fd4b6, #ffd98a); }
+  #ctrlbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; height: 27px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: rgba(4,6,9,.96); border-top: 1px solid rgba(127,231,210,.25); color: #9fb4c4; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; pointer-events: none; }
+  #ctrlbar b { color: #fff7ea; }
+  #viewlabel { color: #ffd98a; font-weight: 800; }
+  body.cockpit #strip { display: none !important; }
+  body.cockpit #dash { bottom: 27px; }
+
   body.poster .hud, body.poster #minimap { display: none !important; }
 </style>
 <script type="importmap">
@@ -68,12 +90,6 @@
 <body>
 <canvas id="scene" aria-label="Storm Rescue: fly the rescue jet into the squall, hover over three sinking fishing boats to winch their crews aboard, and land on Coral Run before the storm peaks"></canvas>
 <p id="status" role="status" aria-live="polite"></p>
-
-<div id="hud-flight" class="hud panel">
-  <div><span class="big" id="speed">118</span> <span class="unit">KT AIRSPEED</span></div>
-  <div class="row"><span>ALT <b id="alt">412</b> FT</span><span>VS <b id="vs">+0</b></span></div>
-  <div class="row"><span>THR <b id="thr">72</b>%</span><span>HULL <b id="hull">100</b>%</span></div>
-</div>
 
 <div id="hud-mission" class="hud panel">
   <div class="stage" id="m-stage">MAYDAY 1 OF 3 · FIRST MAYDAY</div>
@@ -92,12 +108,23 @@
   <div class="row"><span>BEST</span><span id="best">0</span></div>
 </div>
 
-<canvas id="minimap" width="168" height="128"></canvas>
 
-<div id="compass" class="hud panel">
-  <div class="hdg" id="hdg">NW 318°</div>
-  <div class="tape" id="tape">W · NW · N · NE · E</div>
+<div id="strip" class="hud">
+  <div class="cell"><div class="lab">AIRSPEED</div><div class="big"><span id="speed">118</span><span class="unit">KT</span></div><div class="sub">VS <b id="vs">+0</b> FT/MIN</div></div>
+  <div class="cell"><canvas id="attball" width="92" height="92"></canvas><div class="lab">ATTITUDE</div></div>
+  <div class="cell"><canvas id="altdial" width="92" height="92"></canvas><div class="lab">ALTIMETER</div></div>
+  <div class="cell"><canvas id="hdgdial" width="92" height="92"></canvas><div class="lab">HEADING</div></div>
+  <div class="cell"><canvas id="rpmdial" width="92" height="92"></canvas><div class="lab">ENGINE</div></div>
+  <div class="cell read"><div class="lab">ALTITUDE</div><div class="bignum" id="altbig">412</div><div class="sub">FEET MSL · HULL <b id="hull">100</b>%</div></div>
+  <div class="cell read"><div class="lab">THROTTLE&nbsp; <span id="thrbig" style="color:#ffd98a">62%</span></div><div class="bar"><div id="thrFill"></div></div><div class="sub">THR <b id="thr">62</b>% · ALT <b id="alt">412</b> FT</div></div>
+  <div class="cell read"><div class="lab">HEADING</div><div class="bignum"><span id="hdgbig">000</span>°</div><div class="sub"><span id="hdg">N 0°</span> · <span id="tape">W · NW · N · NE · E</span></div></div>
 </div>
+<div id="ctrlbar" class="hud">
+  <div>← → <b>BANK</b> &nbsp;·&nbsp; ↑ ↓ <b>PITCH</b> &nbsp;·&nbsp; W S <b>THROTTLE</b> &nbsp;·&nbsp; SHIFT <b>BOOST</b></div>
+  <div>C <b>CAMERA</b> &nbsp;·&nbsp; ENTER <b>START</b> &nbsp;·&nbsp; P <b>PAUSE</b></div>
+  <div id="viewlabel">CHASE VIEW</div>
+</div>
+<canvas id="minimap" width="168" height="128"></canvas>
 
 <div id="ticker" class="hud">📻 Coast Guard 121.5 — “All stations, Black Squall inbound — three fishing vessels taking water…”</div>
 <div id="banner" class="hud"></div>

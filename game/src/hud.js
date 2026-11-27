@@ -55,6 +55,93 @@ export function createHud(best) {
   const engCtx = el('eng').getContext('2d');
   const setHdgTape = cached(el('hdgtape-val'), (v) => v);
   let cockpitOn = false;
+  // Chase-view instrument strip: four round gauges + big readouts.
+  const setAltBig = cached(el('altbig'), (v) => Math.max(0, Math.round(v * 3.28)).toLocaleString('en-US'));
+  const setThrBig = cached(el('thrbig'), (v) => `${Math.round(v * 100)}%`);
+  const setHdgBig = cached(el('hdgbig'), (v) => String(Math.round(v)).padStart(3, '0'));
+  const thrFill = el('thrFill');
+  const viewLabel = el('viewlabel');
+  const attCtx = el('attball').getContext('2d');
+  const altDialCtx = el('altdial').getContext('2d');
+  const hdgDialCtx = el('hdgdial').getContext('2d');
+  const rpmDialCtx = el('rpmdial').getContext('2d');
+  let lastThrWidth = -1;
+
+  function dialFace(c, label) {
+    c.fillStyle = '#0a141c'; c.beginPath(); c.arc(46, 46, 44, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(127,231,210,0.5)'; c.lineWidth = 2; c.stroke();
+    c.fillStyle = '#7fe7d2'; c.font = '700 8.5px system-ui, sans-serif'; c.textAlign = 'center';
+    c.fillText(label, 46, 84);
+    c.textAlign = 'left';
+  }
+  function needle(c, angle, length, color) {
+    c.strokeStyle = color; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(46, 46);
+    c.lineTo(46 + Math.sin(angle) * length, 46 - Math.cos(angle) * length); c.stroke();
+    c.fillStyle = '#fff7ea'; c.beginPath(); c.arc(46, 46, 3.4, 0, Math.PI * 2); c.fill();
+  }
+  function drawGauges(flight, deg) {
+    // Attitude ball: the cockpit ADI in round form.
+    let c = attCtx;
+    c.save();
+    c.beginPath(); c.arc(46, 46, 44, 0, Math.PI * 2); c.clip();
+    c.translate(46, 46); c.rotate(-flight.bank); c.translate(0, flight.pitch * 52);
+    c.fillStyle = '#2e6f8e'; c.fillRect(-60, -120, 120, 120);
+    c.fillStyle = '#3d4a3a'; c.fillRect(-60, 0, 120, 120);
+    c.fillStyle = '#fff7ea'; c.fillRect(-60, -1, 120, 2);
+    c.restore();
+    c.strokeStyle = 'rgba(127,231,210,0.5)'; c.lineWidth = 2;
+    c.beginPath(); c.arc(46, 46, 44, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = '#ffb042'; c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(22, 46); c.lineTo(38, 46); c.lineTo(38, 51);
+    c.moveTo(70, 46); c.lineTo(54, 46); c.lineTo(54, 51);
+    c.stroke();
+    c.fillStyle = '#ffb042'; c.beginPath(); c.arc(46, 46, 2.6, 0, Math.PI * 2); c.fill();
+
+    // Altimeter: 0-2,000 ft over a 270 degree sweep.
+    c = altDialCtx;
+    dialFace(c, 'FT MSL');
+    c.fillStyle = '#cfd8e6'; c.font = '700 9px system-ui, sans-serif'; c.textAlign = 'center';
+    for (let v = 0; v <= 2000; v += 250) {
+      const a = (-225 + (v / 2000) * 270) * Math.PI / 180;
+      const x = 46 + Math.sin(a) * 34; const y = 46 - Math.cos(a) * 34;
+      if (v % 500 === 0) c.fillText(String(v / 100), x, y + 3);
+      c.fillRect(46 + Math.sin(a) * 40 - 0.75, 46 - Math.cos(a) * 40 - 0.75, 1.5, 1.5);
+    }
+    c.textAlign = 'left';
+    needle(c, (-225 + (Math.max(0, flight.y * 3.28) / 2000) * 270) * Math.PI / 180, 30, '#ffd98a');
+
+    // Heading: a rotating compass card under a fixed pointer.
+    c = hdgDialCtx;
+    dialFace(c, 'MAGNETIC');
+    c.save();
+    c.beginPath(); c.arc(46, 46, 41, 0, Math.PI * 2); c.clip();
+    c.translate(46, 46); c.rotate(-deg * Math.PI / 180);
+    c.fillStyle = '#fff7ea'; c.font = '800 11px system-ui, sans-serif'; c.textAlign = 'center';
+    const cards = [['N', 0], ['E', 90], ['S', 180], ['W', 270]];
+    for (const [letter, bearing] of cards) {
+      const a = bearing * Math.PI / 180;
+      c.fillText(letter, Math.sin(a) * 31, -Math.cos(a) * 31 + 4);
+    }
+    c.fillStyle = 'rgba(255,247,234,0.6)';
+    for (let b = 0; b < 360; b += 30) {
+      const a = b * Math.PI / 180;
+      c.fillRect(Math.sin(a) * 40 - 0.75, -Math.cos(a) * 40 - 0.75, 1.5, 1.5);
+    }
+    c.restore();
+    c.fillStyle = '#ffb042';
+    c.beginPath(); c.moveTo(46, 3); c.lineTo(41, 11); c.lineTo(51, 11); c.closePath(); c.fill();
+    c.textAlign = 'left';
+
+    // Engine: RPM follows throttle and speed — the engine's real state.
+    c = rpmDialCtx;
+    dialFace(c, 'RPM x100');
+    const rpm = 500 + flight.throttle * 1900 + flight.speed * 5;
+    c.strokeStyle = '#ff5e5e'; c.lineWidth = 3;
+    c.beginPath(); c.arc(46, 46, 38, (-225 + 260) * Math.PI / 180 - Math.PI / 2, (-225 + 270) * Math.PI / 180 - Math.PI / 2); c.stroke();
+    needle(c, (-225 + (rpm / 3000) * 270) * Math.PI / 180, 30, '#7fe7d2');
+  }
 
   function drawRadar(flight, target) {
     const c = radarCtx; const W = 252; const H = 140;
@@ -214,6 +301,12 @@ export function createHud(best) {
         bannerNode.style.opacity = '0';
       }
       drawMap(flight, target);
+      setAltBig(flight.y);
+      setThrBig(flight.throttle);
+      setHdgBig(deg);
+      const tw = Math.round(flight.throttle * 100);
+      if (tw !== lastThrWidth) { lastThrWidth = tw; thrFill.style.width = `${tw}%`; }
+      if (!cockpitOn) drawGauges(flight, deg);
       if (cockpitOn) {
         const tgt = mission.state.finished ? null : { boatIndex: mission.state.boatIndex };
         drawRadar(flight, tgt);
@@ -226,6 +319,7 @@ export function createHud(best) {
       cockpitOn = on;
       cockpitNode.hidden = !on;
       document.body.classList.toggle('cockpit', on);
+      viewLabel.textContent = on ? 'COCKPIT VIEW' : 'CHASE VIEW';
     },
     showBanner(text) {
       bannerNode.textContent = text;
