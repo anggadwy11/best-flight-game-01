@@ -71,6 +71,17 @@ export function buildPlane() {
   rightLight.position.set(5.75, 0.3, -0.6);
   group.add(leftLight, rightLight);
 
+  // The searchlight: a visible cone sweeping down-forward from the nose —
+  // in the storm frames it is the plane's signature, a blade of warm light.
+  const beam = new THREE.Mesh(new THREE.ConeGeometry(3.4, 20, 14, 1, true),
+    new THREE.MeshBasicMaterial({
+      color: 0xffd9a0, transparent: true, opacity: 0.085,
+      side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending,
+    }));
+  beam.rotation.x = Math.PI / 2 + 0.62;
+  beam.position.set(0, -4.2, -10.5);
+  group.add(beam);
+
   return { group, prop };
 }
 
@@ -127,6 +138,14 @@ export function createFlight() {
     state.x += f.x * state.speed * dt;
     state.z += f.z * state.speed * dt;
     state.y += state.vy * dt;
+    // Squall gusts: a sideways shove plus turbulence that worries the
+    // wings — the storm is a flight input, not just a backdrop.
+    if (control.wind) {
+      state.x += control.wind.x * dt;
+      state.z += control.wind.z * dt;
+      state.bank += Math.sin(state.propSpin * 0.35) * control.wind.turb * 0.1 * dt * 8;
+      state.y += Math.sin(state.propSpin * 0.21) * control.wind.turb * 1.6 * dt;
+    }
     if (state.y > 190) { state.y = 190; state.vy = Math.min(state.vy, 0); }
 
     state.fuel = Math.max(0, state.fuel - PLANE.fuelBurn * (0.35 + state.throttle) * dt * 3.2);

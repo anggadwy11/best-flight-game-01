@@ -1,11 +1,12 @@
-// Sunset Sortie — every tuning number and colour in one place.
-// Golden-hour grade follows the measured preset: warm key #FFB36B, violet-blue
-// shadows, peach fog that starts close enough to actually work, and a sky that
-// keeps ~25% violet/blue so the frame never turns into orange soup.
+// Storm Rescue — every tuning number and colour in one place.
+// The grade is a backlit squall: a dark slate storm world with ONE warm
+// sodium gap torn in the clouds at the horizon, so every frame reads as a
+// bright warm band behind dark silhouettes — maximum thumbnail contrast,
+// and the warm coherent key light the sunset build was praised for.
 
 export const STEP = 1 / 60;
 
-/** The sortie clock: one sunset, in seconds of play. */
+/** The storm clock: seconds until the squall peaks and the sea closes. */
 export const SORTIE_SECONDS = 240;
 
 export const PLANE = {
@@ -23,29 +24,29 @@ export const PLANE = {
 };
 
 export const PALETTE = {
-  sun: 0xffb36b,         // golden key light
-  sunDisc: 0xffcf9e,
-  skyTop: 0x8a6f8a,      // violet dusk up high
-  skyHorizon: 0xffc47c,  // peach at the horizon
-  fog: 0xf7b98a,
-  shadow: 0x444380,      // violet shade, never brown
-  sea: 0x2e6f8e,
-  seaDeep: 0x262c51,     // navy, the darkest colour in the game
-  sand: 0xf2d492,
-  grass: 0x58a05c,
-  grassDark: 0x3d7a4a,
-  palmTrunk: 0x8a5a3b,
-  palmLeaf: 0x2f8f5b,
-  houseWall: 0xffe3ec,
-  houseRoof: 0xe5534b,
-  runway: 0x3a3f52,
-  runwayLine: 0xfff7ea,
-  planeBody: 0xfff3d6,
-  planeTrim: 0xe5534b,
-  planeWing: 0xffd98a,
-  ringNext: 0xffc93c,
-  ringDone: 0x2fd4b6,
-  ringLater: 0xff8c5a,
+  sun: 0xff9a4d,         // sodium warm key, low behind the storm wall
+  glow: 0xffb36b,
+  skyTop: 0x1f2735,      // slate storm blue, up high
+  skyMid: 0x3d4a5c,
+  fog: 0x59636e,         // grey-blue murk, with a hard visibility floor
+  shadow: 0x1a2230,
+  sea: 0x27383f,         // dark teal-grey water
+  seaDeep: 0x11161d,     // near-black troughs
+  sand: 0x6f6152,        // wet sand, darker than any beach holiday
+  grass: 0x3f5a48,       // storm-battered green
+  grassDark: 0x2c4234,
+  palmTrunk: 0x4a3826,
+  palmLeaf: 0x2c5240,
+  houseWall: 0xcfd4d8,    // weatherboard grey-white
+  houseRoof: 0x8a3b34,
+  runway: 0x23262e,      // wet asphalt
+  runwayLine: 0xf5efdd,
+  planeBody: 0xf4f1e8,   // rescue white
+  planeTrim: 0xff7a2a,   // SAR orange — the plane pops against dark sea
+  planeWing: 0xf4f1e8,
+  ringNext: 0xffb03a,    // amber hover ring
+  ringDone: 0x39d98a,    // rescued teal-green
+  flare: 0xff2a1e,       // the one red point of salience per frame
   balloonA: 0xff5e8a,
   balloonB: 0x2fb6d4,
   balloonC: 0xffc93c,
@@ -54,23 +55,20 @@ export const PALETTE = {
 export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
 
 /** Where the best score is kept between visits (this browser only). */
-export const BEST_KEY = 'sunset-sortie.best';
+export const BEST_KEY = 'storm-rescue.best';
 
-/** The course: gates in flying order. Stage 1 = 0-5, cargo = 6-8, final = 9-11. */
-export const GATES = [
-  { x: 0,    y: 85, z: 220,   label: 'Gate 1' },
-  { x: -60,  y: 95, z: 40,    label: 'Gate 2' },
-  { x: 40,   y: 80, z: -140,  label: 'Gate 3' },
-  { x: 130,  y: 95, z: -300,  label: 'Gate 4' },
-  { x: 60,   y: 75, z: -470,  label: 'Gate 5' },
-  { x: -40,  y: 65, z: -580,  label: 'Gate 6' },
-  { x: 0,    y: 58, z: -700,  label: 'Cargo 1', cargo: true },
-  { x: -85,  y: 68, z: -830,  label: 'Cargo 2', cargo: true },
-  { x: -30,  y: 55, z: -960,  label: 'Cargo 3', cargo: true },
-  { x: 80,   y: 78, z: -1090, label: 'Gate 10' },
-  { x: 150,  y: 58, z: -1230, label: 'Gate 11' },
-  { x: 175,  y: 38, z: -1360, label: 'Final gate' },
+/**
+ * The three maydays, in rescue order. Each boat lists in the swell with its
+ * crew on deck; the hover ring floats above it at ringY.
+ */
+export const BOATS = [
+  { x: 60,   z: -420,  name: 'FV Kestrel', crew: 3, ringY: 17, list: 0.16 },
+  { x: -130, z: -850,  name: 'FV Brine',   crew: 4, ringY: 17, list: -0.21 },
+  { x: 95,   z: -1180, name: 'FV Alba',    crew: 2, ringY: 17, list: 0.13 },
 ];
+
+/** Hover-rescue rules: stay in the ring, low and slow, this long. */
+export const RESCUE = { radius: 14, band: 6.5, maxSpeed: 26, dwell: 2.5, points: 400 };
 
 /** The landing strip on Coral Run island: centre, heading and size. */
 export const RUNWAY = { x: 180, z: -1560, halfWidth: 14, halfLength: 115, deckY: 6 };

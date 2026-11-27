@@ -1,15 +1,16 @@
-// Sunset Sortie — boot and the one loop. A Three.js chase-view flight game:
-// the world advances in fixed 1/60 s steps, the camera glides behind the
-// plane (never snaps), and the screens are title, play, paused, landed and
-// crashed. ?shot=title|gates|cargo|landing stages a deterministic scene,
-// paints it, and sets window.__shotReady for the screenshot harness.
+// Storm Rescue — boot and the one loop. A Three.js chase-view rescue
+// game: the world advances in fixed 1/60 s steps, the camera glides
+// behind the plane (never snaps), and the screens are title, play,
+// paused, landed and lost. The storm (storm.js) and the rescue
+// (rescue.js) are separate modules wired together here — weather in,
+// hover state out, score on top. ?shot=title|boat|hover|landing stages
+// a deterministic scene, paints it, and sets window.__shotReady.
 import * as THREE from 'three';
 import { SORTIE_SECONDS, STEP } from './config.js';
-import { createRandom } from './random.js';
 import { buildWorld } from './world.js';
-import { buildTraffic } from './traffic.js';
 import { buildPlane, createFlight, posePlane } from './flight.js';
-import { createMission } from './missions.js';
+import { createStorm } from './storm.js';
+import { createRescue } from './rescue.js';
 import { ACTION_CONFIRM, ACTION_PAUSE, createInput } from './input.js';
 import { createHud } from './hud.js';
 import { createAudio } from './audio.js';
@@ -26,17 +27,17 @@ const endTitle = document.getElementById('end-title');
 const endLines = document.getElementById('end-lines');
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, 16 / 10, 0.5, 4000);
 
 const world = buildWorld(scene);
-const traffic = buildTraffic(scene);
+const storm = createStorm(scene);
 const planeParts = buildPlane();
 scene.add(planeParts.group);
 const flightApi = createFlight();
 const flight = flightApi.state;
-const mission = createMission(world.rings, world.crates);
+const rescue = createRescue(scene);
 const audio = createAudio();
 let best = readBest();
 const hud = createHud(best);
@@ -47,7 +48,7 @@ let score = 0;
 let timeLeft = SORTIE_SECONDS;
 let elapsed = 0;
 let camPos = new THREE.Vector3(60, 110, 640);
-let warnedNear = false;
+let fpsFrames = 0;
 
 function resize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -61,41 +62,42 @@ function announce(message) { status.textContent = message; }
 
 function startSortie() {
   flightApi.reset();
-  mission.reset();
+  rescue.reset();
   score = 0;
   timeLeft = SORTIE_SECONDS;
-  warnedNear = false;
   screen = 'play';
   titleNode.classList.add('hidden');
   document.body.classList.remove('poster');
   endNode.style.display = 'none';
   audio.start();
-  announce('Flying. Stage 1: golden gates.');
+  announce('Flying. First mayday: FV Kestrel.');
 }
 
 function endSortie(kind) {
   screen = 'end';
   document.body.classList.add('poster');
   audio.mute();
-  const gates = mission.state.gatesPassed;
-  const cargo = mission.state.cargo;
-  if (kind === 'landed') {
-    const bonus = Math.round(timeLeft) * 4 + Math.round(flight.fuel) * 6 + cargo * 150;
+  const crews = rescue.state.rescued;
+  if (kind === 'landed' && rescue.state.finished) {
+    const bonus = Math.round(timeLeft) * 4 + Math.round(flight.fuel) * 6;
     score += bonus;
-    endTitle.textContent = 'TOUCHDOWN!';
-    endLines.innerHTML = `Mail delivered to Coral Run with the light still in the sky.<br>`
-      + `Gates ${gates} / 12 · Cargo ${cargo} / 3 · Time + fuel bonus +${bonus}<br>`
+    endTitle.textContent = 'ALL CREWS HOME!';
+    endLines.innerHTML = `Every crew is off the water and the plane is on the Coral Run strip.<br>`
+      + `Rescues ${crews} / 3 · Time + fuel bonus +${bonus}<br>`
       + `<b>FINAL SCORE ${score.toLocaleString('en-US')}</b> · BEST ${Math.max(best, score).toLocaleString('en-US')}`;
     audio.landed();
-  } else if (kind === 'dark') {
-    endTitle.textContent = 'DARKNESS FELL';
-    endLines.innerHTML = `The sun set with the mail still aboard.<br>`
-      + `Gates ${gates} / 12 · Cargo ${cargo} / 3<br>`
+  } else if (kind === 'landed') {
+    endTitle.textContent = 'DOWN SAFE — SEA STILL OUT THERE';
+    endLines.innerHTML = `You landed with ${crews} of 3 crews aboard. The rest ride out the squall on the boats.<br>`
+      + `<b>SCORE ${score.toLocaleString('en-US')}</b> · BEST ${Math.max(best, score).toLocaleString('en-US')}`;
+  } else if (kind === 'peaked') {
+    endTitle.textContent = 'THE SQUALL PEAKED';
+    endLines.innerHTML = `The sea closed in. ${crews} of 3 crews came home aboard your plane.<br>`
       + `<b>SCORE ${score.toLocaleString('en-US')}</b> · BEST ${Math.max(best, score).toLocaleString('en-US')}`;
   } else {
-    endTitle.textContent = kind === 'splash' ? 'DOWN IN THE LAGOON' : 'CRASHED';
-    endLines.innerHTML = `The sortie ends here — the Coral Run mail goes by boat tomorrow.<br>`
-      + `Gates ${gates} / 12 · Cargo ${cargo} / 3<br>`
+    endTitle.textContent = kind === 'splash' ? 'DOWN IN THE SQUALL' : 'CRASHED';
+    endLines.innerHTML = `The rescue ends here — the coast guard sends the big helicopter for the rest.<br>`
+      + `Rescues ${crews} / 3<br>`
       + `<b>SCORE ${score.toLocaleString('en-US')}</b> · BEST ${Math.max(best, score).toLocaleString('en-US')}`;
     audio.hit();
   }
@@ -107,9 +109,9 @@ function endSortie(kind) {
 /** Chase camera: glide toward a point behind and above the plane. */
 const desired = new THREE.Vector3();
 const lookTarget = new THREE.Vector3();
-function chaseCamera(dt, lift = 0) {
+function chaseCamera(dt, lift = 0, back = 27) {
   const f = flightApi.forward();
-  desired.set(flight.x - f.x * 27, flight.y + 9.5, flight.z - f.z * 27);
+  desired.set(flight.x - f.x * back, flight.y + 9.5, flight.z - f.z * back);
   const k = 1 - Math.exp(-dt * 3.4);
   camPos.lerp(desired, k);
   camera.position.copy(camPos);
@@ -131,45 +133,33 @@ function orbitCamera(t) {
   camera.updateProjectionMatrix();
 }
 
+function intensity() { return 1 - Math.max(0, timeLeft) / SORTIE_SECONDS; }
+
 function stepPlay(dt, input) {
-  const prev = { x: flight.x, y: flight.y, z: flight.z };
   const control = {
     bank: input.bank(),
     pitch: input.pitch(),
     throttleAxis: input.throttleAxis(),
     boost: input.boost(),
+    wind: storm.gustAt(elapsed, intensity()),
   };
   const event = flightApi.step(dt, control);
   elapsed += dt;
   timeLeft -= dt;
-  const hit = mission.step(flight, prev, elapsed);
+  const hit = rescue.step(flight, dt, elapsed);
   if (hit) {
     score += hit.points;
-    if (hit.gate.cargo) audio.cargo(); else audio.gate();
-  }
-  const near = traffic.nearestDistance(flight.x, flight.y, flight.z);
-  if (near < 13 && near > 0.01) {
-    flight.hull -= 34;
-    flight.x -= flightApi.forward().x * 6;
-    flight.z -= flightApi.forward().z * 6;
-    flight.y += 5;
-    audio.hit();
-    hud.showBanner('TRAFFIC! HULL DAMAGED');
-    if (flight.hull <= 0) { endSortie('crash'); return; }
-  } else if (near < 30 && !warnedNear) {
-    warnedNear = true;
-    audio.warn();
-    setTimeout(() => { warnedNear = false; }, 4000);
+    audio.cargo();
+    hud.showBanner(rescue.state.banner);
   }
   audio.engine(flight.throttle, flight.speed);
-  if (event === 'landed') endSortie(mission.state.finished ? 'landed' : 'crash');
+  if (event === 'landed') endSortie('landed');
   else if (event) endSortie(event);
-  else if (timeLeft <= 0) endSortie('dark');
+  else if (timeLeft <= 0) endSortie('peaked');
 }
 
 function frame(now, input, shotMode) {
   const dt = STEP;
-  elapsed += shotMode ? 0 : 0; // elapsed advances inside the step paths
   if (!shotMode) {
     const actions = input.takeActions();
     if (actions & ACTION_CONFIRM && (screen === 'title' || screen === 'end')) startSortie();
@@ -188,21 +178,24 @@ function frame(now, input, shotMode) {
       elapsed += dt;
     }
   }
+  const inten = shotMode ? (1 - shotTimeLeft / SORTIE_SECONDS) : (screen === 'title' ? 0.25 : intensity());
   world.update(dt, elapsed);
-  traffic.update(elapsed + (shotMode ? 7.3 : 0));
+  storm.update(dt, elapsed, camera.position, inten);
+  if (shotMode) rescue.step(flight, 0, elapsed);
   posePlane(planeParts, flight);
-  if (shotMode && shot === 'title') chaseCamera(1, 8);
-  else if (screen === 'title') orbitCamera(elapsed + 4.2);
+  if (shotMode && shot === 'title') chaseCamera(1, 8, 36);
+  else if (screen === 'title' && !shotMode) orbitCamera(elapsed + 4.2);
   else chaseCamera(dt);
-  hud.update(flight, mission, shotMode ? shotTimeLeft : timeLeft, SORTIE_SECONDS, shotMode ? shotScore : score, elapsed);
+  hud.update(flight, rescue, shotMode ? shotTimeLeft : timeLeft, SORTIE_SECONDS, shotMode ? shotScore : score, elapsed);
   renderer.render(scene, camera);
+  fpsFrames += 1;
 }
 
 let shotTimeLeft = SORTIE_SECONDS;
 let shotScore = 0;
 
 if (shot) {
-  const staged = stageShot(shot, flightApi, mission);
+  const staged = stageShot(shot, flightApi, rescue);
   shotTimeLeft = staged.timeLeft;
   shotScore = staged.score;
   if (staged.screen === 'title') {
@@ -214,12 +207,13 @@ if (shot) {
     document.body.classList.remove('poster');
     elapsed = 2.6;
   }
-  mission.paint(2.6);
-  // Settle the chase camera instantly for the staged frame.
+  rescue.paint(2.6);
   const f = flightApi.forward();
-  camPos.set(flight.x - f.x * 27, flight.y + 9.5, flight.z - f.z * 27);
+  const camBack = shot === 'title' ? 42 : 27;
+  camPos.set(flight.x - f.x * camBack, flight.y + 9.5, flight.z - f.z * camBack);
   let painted = 0;
   function paint() {
+    if (shot === 'boat') storm.strike();
     frame(performance.now(), null, true);
     painted += 1;
     if (painted < 3) requestAnimationFrame(paint);
@@ -231,7 +225,14 @@ if (shot) {
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && screen === 'play') screen = 'paused';
   });
-  announce('Sunset Sortie. Press Enter to start.');
+  announce('Storm Rescue. Press Enter to start.');
+  // FPS probe for the build gate: ?fps=1 counts real frames for 5 s.
+  if (params.get('fps')) {
+    setTimeout(() => {
+      window.__fps = fpsFrames / 5;
+      window.__shotReady = true;
+    }, 5000);
+  }
   function loop(now) {
     requestAnimationFrame(loop);
     frame(now, input, false);

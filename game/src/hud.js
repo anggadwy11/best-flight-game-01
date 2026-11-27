@@ -2,7 +2,7 @@
 // Every readout answers one pilot question — how fast, how high, which way,
 // how much fuel, what next and how far — and text is rebuilt only when the
 // number it shows actually changes.
-import { GATES, ISLANDS, RUNWAY } from './config.js';
+import { BOATS, ISLANDS, RUNWAY } from './config.js';
 
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
@@ -18,7 +18,7 @@ function cached(node, format) {
 
 function fmtClock(timeLeft, sortieSeconds) {
   const flown = sortieSeconds - timeLeft;
-  const minutes = 18 * 60 + 24 + Math.floor(flown * (96 / sortieSeconds));
+  const minutes = 17 * 60 + 48 + Math.floor(flown * (100 / sortieSeconds));
   const hh = Math.floor(minutes / 60);
   const mm = String(minutes % 60).padStart(2, '0');
   return `${hh}:${mm}`;
@@ -41,6 +41,7 @@ export function createHud(best) {
   const setClock = cached(el('clock'), (v) => v);
   const setLeft = cached(el('timeleft'), (v) => v);
   const setHdg = cached(el('hdg'), (v) => v);
+  const setStorm = cached(el('stormpct'), (v) => v);
   const setStage = cached(el('m-stage'), (v) => v);
   const setGoal = cached(el('m-goal'), (v) => v);
   const setDist = cached(el('m-dist'), (v) => v);
@@ -57,16 +58,16 @@ export function createHud(best) {
     const sx = (x) => W / 2 + x * 0.055;
     const sz = (z) => H / 2 + (z + 520) * 0.038;
     map.clearRect(0, 0, W, H);
-    map.fillStyle = '#2e6f8e';
+    map.fillStyle = '#27383f';
     map.fillRect(0, 0, W, H);
-    map.fillStyle = '#58a05c';
+    map.fillStyle = '#527a5e';
     for (const island of ISLANDS) {
       map.beginPath();
-      map.arc(sx(island.x), sz(island.z), Math.max(3, island.r * 0.055), 0, Math.PI * 2);
+      map.arc(sx(island.x), sz(island.z), Math.max(4, island.r * 0.07), 0, Math.PI * 2);
       map.fill();
     }
-    map.fillStyle = '#ffc93c';
-    for (const gate of GATES) map.fillRect(sx(gate.x) - 1.5, sz(gate.z) - 1.5, 3, 3);
+    map.fillStyle = '#ff2a1e';
+    for (const boat of BOATS) map.fillRect(sx(boat.x) - 2.5, sz(boat.z) - 2.5, 5, 5);
     map.fillStyle = '#fff7ea';
     map.fillRect(sx(RUNWAY.x) - 5, sz(RUNWAY.z) - 1.5, 10, 3);
     if (target) {
@@ -109,15 +110,20 @@ export function createHud(best) {
       setHdg(`${point} ${Math.round(deg)}°`);
       const target = mission.target();
       const dist = Math.hypot(target.x - flight.x, target.z - flight.z);
+      const stormPct = Math.round((1 - Math.max(0, timeLeft) / sortieSeconds) * 100);
+      setStorm(`${stormPct}% · GUST ${Math.round(stormPct * 0.42)} KT`);
       if (mission.state.finished) {
         setStage('FINAL · LANDING');
         setGoal('Land on Coral Run strip');
         setDist(`STRIP ${Math.round(dist)} m · slow below 78 kt`);
       } else {
         const s = mission.stage();
-        setStage(`STAGE ${mission.stageNumber()} OF 3 · ${s.name}`);
+        setStage(`MAYDAY ${mission.stageNumber()} OF 3 · ${s.name}`);
         setGoal(s.goal);
-        setDist(`${target.label.toUpperCase()} · ${Math.round(dist)} m`);
+        const dwellPct = Math.round((mission.state.dwell || 0) / 2.5 * 100);
+        setDist(dwellPct > 0
+          ? `${target.label.toUpperCase()} · WINCHING ${dwellPct}%`
+          : `${target.label.toUpperCase()} · ${Math.round(dist)} m · HOVER IN THE RING`);
       }
       if (mission.state.bannerT > 0 && mission.state.banner) {
         if (lastBanner !== mission.state.banner) {

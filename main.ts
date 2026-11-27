@@ -1,11 +1,13 @@
-// Sunset Sortie — Coral Run (Node 22, standard library only): the game is this
+// Storm Rescue — Black Squall (Node 22, standard library only): the game is this
 // directory's game/ folder, plain static files a desktop browser loads offline
 // (game/index.html and its ES modules, Three.js vendored under game/vendor/,
 // no network request), and the program hands it in. It copies game/ and
 // screenshots/ from beside this file to /output and writes /output/dossier.json,
 // the summary the judge reads, with the vendored make.fun library. A 3D flight
-// game: thread twelve golden gates in three stages, lift the Palm Cay cargo,
-// and land on the Coral Run strip before the sun sets.
+// game: fly a rescue seaplane into a building squall — gust field, rain and
+// lightning — hold a low, slow hover in the amber ring over three listing
+// fishing boats to winch their crews aboard, then land on the Coral Run
+// strip, PAPI lit, before the storm peaks.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:

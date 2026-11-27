@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sunset Sortie — Coral Run</title>
+<title>Storm Rescue — Black Squall</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #2a1a2e; font-family: "Segoe UI", system-ui, sans-serif; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #10151d; font-family: "Segoe UI", system-ui, sans-serif; }
   #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .hud { position: fixed; z-index: 5; color: #fff7ea; text-shadow: 0 1px 3px rgba(42,26,46,.85); pointer-events: none; }
-  .panel { background: rgba(38,28,64,.62); border: 1px solid rgba(255,207,158,.45); border-radius: 10px; padding: 8px 12px; }
+  .panel { background: rgba(8,12,18,.8); border: 1px solid rgba(255,179,107,.55); border-radius: 10px; padding: 8px 12px; }
   #hud-flight { left: 14px; bottom: 14px; min-width: 196px; }
   #hud-flight .big { font-size: 44px; font-weight: 800; line-height: 1; color: #ffd98a; }
   #hud-flight .unit { font-size: 15px; font-weight: 700; color: #ffb36b; }
@@ -28,7 +28,7 @@
   #compass .hdg { font-size: 30px; font-weight: 800; color: #ffd98a; line-height: 1.05; }
   #compass .tape { font-size: 13px; letter-spacing: 3px; color: #e8ddff; }
   #minimap { position: fixed; right: 14px; bottom: 118px; z-index: 5; border-radius: 10px; border: 1px solid rgba(255,207,158,.45); background: rgba(38,44,81,.72); pointer-events: none; }
-  #ticker { left: 50%; transform: translateX(-50%); bottom: 14px; font-size: 13.5px; font-weight: 600; color: #ffe9c9; background: rgba(38,28,64,.55); padding: 5px 14px; border-radius: 999px; white-space: nowrap; }
+  #ticker { left: 50%; transform: translateX(-50%); bottom: 152px; font-size: 13.5px; font-weight: 600; color: #ffe9c9; background: rgba(38,28,64,.55); padding: 5px 14px; border-radius: 999px; white-space: nowrap; }
   #banner { left: 50%; top: 16%; transform: translateX(-50%); font-size: 30px; font-weight: 800; color: #ffd98a; text-align: center; opacity: 0; transition: opacity .25s; }
   #crosshair { left: 50%; top: 50%; transform: translate(-50%,-50%); font-size: 26px; color: rgba(255,247,234,.75); }
   #title { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 5.5%; pointer-events: none; text-align: center; }
@@ -51,7 +51,7 @@
 </script>
 </head>
 <body>
-<canvas id="scene" aria-label="Sunset Sortie: fly the seaplane through the golden gates, collect the cargo and land on Coral Run before dark"></canvas>
+<canvas id="scene" aria-label="Storm Rescue: fly the seaplane into the squall, hover over three sinking fishing boats to winch their crews aboard, and land on Coral Run before the storm peaks"></canvas>
 <p id="status" role="status" aria-live="polite"></p>
 
 <div id="hud-flight" class="hud panel">
@@ -61,14 +61,15 @@
 </div>
 
 <div id="hud-mission" class="hud panel">
-  <div class="stage" id="m-stage">STAGE 1 OF 3 · GOLDEN GATES</div>
-  <div class="goal" id="m-goal">Fly the gold ring</div>
-  <div class="dist" id="m-dist">GATE 3 / 12 · 640 m</div>
-  <div class="steps" id="m-steps">▸ <b>Gates 1–6</b> — thread the rings<br>▸ Cargo — lift 3 crates at Palm Cay<br>▸ Final — land on Coral Run strip</div>
+  <div class="stage" id="m-stage">MAYDAY 1 OF 3 · FIRST MAYDAY</div>
+  <div class="goal" id="m-goal">Hover over FV Kestrel — crew of 3</div>
+  <div class="dist" id="m-dist">FV KESTREL · 640 m · HOVER IN THE RING</div>
+  <div class="steps" id="m-steps">▸ <b>Maydays 1–3</b> — hold a low, slow hover in the amber ring<br>▸ Gusts build as the squall peaks — mind the shove<br>▸ Final — land on Coral Run strip, PAPI lit</div>
 </div>
 
 <div id="hud-right" class="hud panel">
-  <div class="row"><span>☀ SUNSET</span><span id="clock">18:42</span></div>
+  <div class="row"><span>🌩 SQUALL PEAKS</span><span id="clock">17:48</span></div>
+  <div class="row"><span>STORM</span><span id="stormpct">0% · GUST 0 KT</span></div>
   <div class="row"><span>TIME LEFT</span><span id="timeleft">3:58</span></div>
   <div class="row"><span>FUEL</span><span id="fuelpct">82%</span></div>
   <div id="fuelbar"><div id="fuelFill"></div></div>
@@ -83,23 +84,23 @@
   <div class="tape" id="tape">W · NW · N · NE · E</div>
 </div>
 
-<div id="ticker" class="hud">📻 Radio Coral 98.6 — “Balloons over Palm Cay — keep right of the lighthouse…”</div>
+<div id="ticker" class="hud">📻 Coast Guard 121.5 — “All stations, Black Squall inbound — three fishing vessels taking water…”</div>
 <div id="banner" class="hud"></div>
 <div id="crosshair" class="hud">+</div>
 
 <div id="title">
-  <div class="kicker">CORAL RUN AIRMAIL · ONE SUNSET, ONE SORTIE</div>
-  <h1>SUNSET<br>SORTIE</h1>
-  <div class="sub">Thread 12 golden gates · lift the Palm Cay cargo · land before dark</div>
+  <div class="kicker">BLACK SQUALL · COAST RESCUE · THREE MAYDAYS</div>
+  <h1>STORM<br>RESCUE</h1>
+  <div class="sub">Three boats are going down in the squall · winch their crews aboard · land before the storm peaks</div>
   <div class="card">🛩 <b>← →</b> bank &amp; turn &nbsp; <b>↑ ↓</b> climb &amp; dive &nbsp; <b>W / S</b> throttle<br>
-  Slow over the strip, wheels over the numbers — a fast arrival is a crash, not a landing.</div>
-  <div class="prompt">PRESS ENTER — ENGINE START</div>
+  A rescue is a <b>hover</b>: inside the amber ring, low and slow, until the crew is up the ladder. Gusts shove — correct early.</div>
+  <div class="prompt">PRESS ENTER — ANSWER THE MAYDAY</div>
 </div>
 
 <div id="end">
   <h2 id="end-title">TOUCHDOWN!</h2>
   <div class="lines" id="end-lines"></div>
-  <div class="prompt">PRESS ENTER — FLY THE NEXT SUNSET</div>
+  <div class="prompt">PRESS ENTER — FLY THE NEXT SQUALL</div>
 </div>
 
 <script type="module" src="./src/main.js"></script>
