@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { BOATS, ISLANDS, PALETTE, RUNWAY } from './config.js';
 import { createRandom } from './random.js';
+import { asphaltTexture, grassTexture, hullTexture, sandTexture, seaTexture } from './textures.js';
 
 /** Wave height of the shared swell field — boats and spray agree with it. */
 export function waveHeight(x, z, t) {
@@ -76,7 +77,7 @@ export function buildWorld(scene) {
   const seaGeo = new THREE.PlaneGeometry(3400, 3400, 60, 60);
   seaGeo.rotateX(-Math.PI / 2);
   const seaBase = seaGeo.attributes.position.array.slice();
-  const sea = new THREE.Mesh(seaGeo, new THREE.MeshLambertMaterial({ color: PALETTE.sea }));
+  const sea = new THREE.Mesh(seaGeo, new THREE.MeshLambertMaterial({ color: PALETTE.sea, map: seaTexture() }));
   scene.add(sea);
   // The warm path: the gap's light smeared on the water toward the camera.
   const sunPath = new THREE.Mesh(new THREE.PlaneGeometry(150, 3000),
@@ -86,9 +87,9 @@ export function buildWorld(scene) {
   scene.add(sunPath);
 
   const rand = createRandom(20261127);
-  const sandMat = new THREE.MeshLambertMaterial({ color: PALETTE.sand });
-  const grassMat = new THREE.MeshLambertMaterial({ color: PALETTE.grass });
-  const grassDark = new THREE.MeshLambertMaterial({ color: PALETTE.grassDark });
+  const sandMat = new THREE.MeshLambertMaterial({ color: PALETTE.sand, map: sandTexture() });
+  const grassMat = new THREE.MeshLambertMaterial({ color: PALETTE.grass, map: grassTexture() });
+  const grassDark = new THREE.MeshLambertMaterial({ color: PALETTE.grassDark, map: grassTexture() });
   const trunkMat = new THREE.MeshLambertMaterial({ color: PALETTE.palmTrunk });
   const leafMat = new THREE.MeshLambertMaterial({ color: PALETTE.palmLeaf });
   const wallMat = new THREE.MeshLambertMaterial({ color: PALETTE.houseWall });
@@ -159,7 +160,7 @@ export function buildWorld(scene) {
 
   // --- Coral Run strip: wet deck, warm edge lamps, PAPI, windsock ---
   const strip = new THREE.Mesh(new THREE.BoxGeometry(RUNWAY.halfWidth * 2, 1.2, RUNWAY.halfLength * 2),
-    new THREE.MeshPhongMaterial({ color: PALETTE.runway, shininess: 120, specular: 0x8a97a5, emissive: 0x141821 }));
+    new THREE.MeshPhongMaterial({ color: 0x9aa0a8, map: asphaltTexture(), shininess: 120, specular: 0x8a97a5, emissive: 0x141821 }));
   strip.position.set(RUNWAY.x, RUNWAY.deckY - 0.4, RUNWAY.z);
   scene.add(strip);
   const lineMat = new THREE.MeshBasicMaterial({ color: PALETTE.runwayLine });
@@ -234,7 +235,7 @@ export function buildWorld(scene) {
   scene.add(lh);
 
   // --- the three fishing boats: listing hulls, masts, crews on deck ---
-  const hullMat = new THREE.MeshLambertMaterial({ color: 0x527282 });
+  const hullMat = new THREE.MeshLambertMaterial({ color: 0x8fa8b4, map: hullTexture() });
   const hullTrim = new THREE.MeshLambertMaterial({ color: 0xc75146 });
   const cabinMat = new THREE.MeshLambertMaterial({ color: 0xd8dde0 });
   const crewMat = new THREE.MeshLambertMaterial({ color: 0x14181f });
