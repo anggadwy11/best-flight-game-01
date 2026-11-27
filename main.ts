@@ -4,7 +4,7 @@
 // no network request), and the program hands it in. It copies game/ and
 // screenshots/ from beside this file to /output and writes /output/dossier.json,
 // the summary the judge reads, with the vendored make.fun library. A 3D flight
-// game: fly a rescue seaplane into a building squall — gust field, rain and
+// game: fly a rescue jet into a building squall — gust field, rain and
 // lightning — hold a low, slow hover in the amber ring over three listing
 // fishing boats to winch their crews aboard, then land on the Coral Run
 // strip, PAPI lit, before the storm peaks.

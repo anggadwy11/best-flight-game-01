@@ -1,5 +1,6 @@
 // Storm Rescue — boot and the one loop. A Three.js chase-view rescue
-// game: the world advances in fixed 1/60 s steps, the camera glides
+// game (the aircraft is a fighter jet since the user's 2026-11-27 call;
+// model in jet.js, mechanics in flight.js): the world advances in fixed 1/60 s steps, the camera glides
 // behind the plane (never snaps), and the screens are title, play,
 // paused, landed and lost. The storm (storm.js) and the rescue
 // (rescue.js) are separate modules wired together here — weather in,
@@ -8,7 +9,8 @@
 import * as THREE from 'three';
 import { SORTIE_SECONDS, STEP } from './config.js';
 import { buildWorld } from './world.js';
-import { buildPlane, createFlight, posePlane } from './flight.js';
+import { createFlight, posePlane } from './flight.js';
+import { buildJet } from './jet.js';
 import { createStorm } from './storm.js';
 import { createRescue } from './rescue.js';
 import { ACTION_CONFIRM, ACTION_PAUSE, createInput } from './input.js';
@@ -33,7 +35,7 @@ const camera = new THREE.PerspectiveCamera(60, 16 / 10, 0.5, 4000);
 
 const world = buildWorld(scene);
 const storm = createStorm(scene);
-const planeParts = buildPlane();
+const planeParts = buildJet();
 scene.add(planeParts.group);
 const flightApi = createFlight();
 const flight = flightApi.state;

@@ -8,7 +8,7 @@ An original 3D flight game for make.fun's **best-flight-game** bounty, built
 on Three.js (vendored under `game/vendor/`) with every other file hand-written
 for this entry. A squall — the Black Squall — is swallowing the archipelago,
 and three fishing boats are going down in it. You fly a white-and-orange
-rescue seaplane into the storm: hold a **low, slow hover in the amber ring**
+rescue jet into the storm: hold a **low, slow hover in the amber ring**
 over each listing boat while its crew climbs aboard, fight a gust field that
 strengthens as the storm peaks, and put the plane down on the rain-wet,
 PAPI-lit Coral Run strip before the sea closes. The storm is backlit by one
